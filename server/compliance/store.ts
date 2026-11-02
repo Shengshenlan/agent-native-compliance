@@ -6,7 +6,12 @@ import { issues, listings, rewrites, type Issue, type Listing, type Rewrite } fr
 import { analyzeListing, MARKETS, type Market, type MarketSummary } from "./analyze.js";
 import { diffStats, diffText } from "./diff.js";
 
-export const ownerOf = (email?: string | null) => email || "local@localhost";
+export class Unauthorized extends Error {}
+/** Every row is scoped to the signed-in user; no shared fallback tenant. */
+export const ownerOf = (email?: string | null): string => {
+  if (!email) throw new Unauthorized("需要登录（未识别到用户）");
+  return email;
+};
 const nowIso = () => new Date().toISOString();
 const parse = <T>(s: string | null | undefined, d: T): T => { try { return s ? (JSON.parse(s) as T) : d; } catch { return d; } };
 
