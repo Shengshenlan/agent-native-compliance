@@ -75,7 +75,7 @@ export async function quickRewrite(ownerEmail: string, listingId: string, issueI
   if (typeof out?.title !== "string" || !out.title.trim()) throw new Error("模型返回缺少 title");
   const valid = new Set(picked.map((i) => i.id));
   const changes = Array.isArray(out.changes)
-    ? out.changes.filter((c: any) => c && typeof c.change === "string").map((c: any) => ({ ...(valid.has(c.issueId) ? { issueId: c.issueId } : {}), change: String(c.change).slice(0, 500) }))
+    ? out.changes.filter((c: any) => c && typeof c.change === "string" && c.change.trim()).map((c: any) => ({ ...(valid.has(c.issueId) ? { issueId: c.issueId } : {}), change: String(c.change).slice(0, 500) }))
     : [];
   const rewrite = await proposeRewrite(ownerEmail, {
     listingId, issueIds: picked.map((i) => i.id),
