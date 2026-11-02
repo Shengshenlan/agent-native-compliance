@@ -1,7 +1,7 @@
 // Contest-period code: 出海合规工作台 main screen.
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import { actionErrorMessage, callAction, useActionMutation, useActionQuery, writeClientAppState } from "@agent-native/core/client/hooks";
-import { IconTrash, IconCheck, IconEye, IconEyeOff, IconFileExport, IconLoader2, IconPencil, IconPlus, IconRefresh, IconSparkles, IconX } from "@tabler/icons-react";
+import { IconTrash, IconCheck, IconEye, IconEyeOff, IconFileExport, IconLoader2, IconPencil, IconPlus, IconBolt, IconRefresh, IconSparkles, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -142,6 +142,10 @@ function ListingPanel({ listingId }: { listingId: string }) {
   const recheck = useActionMutation("run-compliance-check");
   const decide = useActionMutation("apply-rewrite");
   const del = useActionMutation("delete-listing");
+  const quick = useActionMutation("quick-rewrite");
+  const [quickStart, setQuickStart] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
+  useEffect(() => { if (quickStart == null) return; const t = setInterval(() => setTick((x) => x + 1), 200); return () => clearInterval(t); }, [quickStart]);
   const [, setParams] = useSearchParams();
 
   const issues = d?.issues ?? [];
@@ -177,6 +181,18 @@ function ListingPanel({ listingId }: { listingId: string }) {
     });
     setWaitingAgent(true);
     setMsg(`已把 ${pick.length} 个风险项交给 Agent 改写，生成后会在下方显示 diff`);
+  };
+  const quickRewrite = async () => {
+    const pick = selectedIssues.length ? selectedIssues : issues.filter((i) => i.fixable && (i.status === "open" || i.status === "approved"));
+    if (!pick.length) return setMsg("请先在看板上勾选要改写解决的风险项");
+    const t0 = performance.now();
+    setQuickStart(t0); setMsg("");
+    try {
+      const r = (await quick.mutateAsync({ listingId, issueIds: pick.map((i) => i.id) })) as { llmMs: number; model: string };
+      await q.refetch();
+      setMsg(`⚡ 快通道已生成改写方案：${pick.length} 项，模型 ${r.model} 单次调用 ${(r.llmMs / 1000).toFixed(1)}s，端到端 ${((performance.now() - t0) / 1000).toFixed(1)}s`);
+    } catch (e) { setMsg(actionErrorMessage(e) ?? "快通道改写失败"); }
+    finally { setQuickStart(null); }
   };
   const exportMd = async () => {
     const r = (await callAction("export-report", { listingId }, { method: "GET" })) as { markdown: string };
@@ -221,6 +237,9 @@ function ListingPanel({ listingId }: { listingId: string }) {
       </div>
 
       {d.pendingRewrite && <RewritePanel rw={d.pendingRewrite} issues={issues} busy={decide.isPending} onDecide={async (decision) => { try { await decide.mutateAsync({ rewriteId: d.pendingRewrite!.id, decision }); setSelected(new Set()); setMsg(decision === "apply" ? "已应用改写并重新检查" : "已放弃该改写"); } catch (e) { setMsg(actionErrorMessage(e) ?? "操作失败"); } }} />}
+      {quickStart != null && (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-amber-500/60 bg-amber-50 px-4 py-3 text-sm dark:bg-amber-950/30" data-testid="quick-pending" data-tick={tick}><IconLoader2 className="size-4 animate-spin" />⚡ 快通道：单次直连模型生成改写中… {((performance.now() - quickStart) / 1000).toFixed(1)}s</div>
+      )}
       {waitingAgent && !d.pendingRewrite && (
         <div className="flex items-center gap-2 rounded-lg border border-dashed border-primary/50 bg-primary/5 px-4 py-3 text-sm"><IconLoader2 className="size-4 animate-spin" />Agent 正在改写… 右侧对话中可以看到过程，完成后 diff 会出现在这里。<button className="ml-auto text-xs underline" onClick={() => setWaitingAgent(false)}>不再等待</button></div>
       )}
@@ -241,7 +260,8 @@ function ListingPanel({ listingId }: { listingId: string }) {
           <Button size="xs" variant="outline" onClick={() => setSelected(new Set(visible.filter((i) => i.fixable && i.status !== "fixed").map((i) => i.id)))}>选中所有可改写项</Button>
           <Button size="xs" variant="outline" disabled={!selected.size} onClick={() => setStatus([...selected], "approved")}><IconCheck className="size-3.5" />批量确认</Button>
           <Button size="xs" variant="outline" disabled={!selected.size} onClick={() => setStatus([...selected], "ignored")}><IconEyeOff className="size-3.5" />批量忽略</Button>
-          <Button size="sm" className="ml-auto" onClick={askAgent} data-testid="ask-agent"><IconSparkles className="size-4" />让 Agent 改写选中项</Button>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={quickRewrite} disabled={quick.isPending} data-testid="quick-rewrite" title="不经过 Agent 对话，单次调用模型直接生成改写方案（约 15 秒）">{quick.isPending ? <IconLoader2 className="size-4 animate-spin" /> : <IconBolt className="size-4" />}快速改写（直连 LLM）</Button>
+          <Button size="sm" onClick={askAgent} data-testid="ask-agent"><IconSparkles className="size-4" />让 Agent 改写选中项</Button>
         </div>
         {msg && <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">{msg}</div>}
         <ul className="divide-y divide-border">
