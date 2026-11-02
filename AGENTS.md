@@ -1,4 +1,18 @@
-# Chat — Agent Guide
+# 出海合规工作台 — Agent Guide
+
+## Domain: SEA listing compliance (TH / PH / MY)
+
+Primary route `/workspace?listing=<id>` (view `workspace`, also `app.homePath`). The workbench and the agent share these actions — never bypass them:
+
+- `create-listing`, `update-listing`, `delete-listing`, `list-listings`, `get-listing`
+- `run-compliance-check` — deterministic check via the pre-existing `legacy/sea-precheck` matcher (`server/compliance/analyze.ts` maps it to board items); re-check merges by fingerprint, keeps human status/edits, marks vanished items `fixed`.
+- `list-issues`, `update-issue` — board items: `open | approved | ignored | fixed`, editable title/suggestion/note/severity.
+- `propose-rewrite` — the agent writes the full new title/description itself and saves it; UI shows a token diff. `apply-rewrite` (`apply|discard`) updates the listing and re-checks. Apply only when the user asks.
+- `export-report` — Markdown report. `view-screen` returns navigation + `selection` (`{listingId, issueIds}` written by the board per tab).
+
+Rules: never invent certificate/registration numbers (use placeholders like `[TISI 认证编号待补充]`); cite only sourceUrl/sourceTitle already on an issue; results are a pre-check, not legal advice. Do not edit files under `legacy/` (hash-pinned, pre-contest code).
+
+
 
 Chat is the minimal chat-first agent-native app. `/` redirects to shared sign-in, then `/home`, the editable Get started page. Chat lives at `/chat`; new chats start there. Actions carry capabilities; screens exist only for durable workflows.
 
