@@ -336,7 +336,7 @@ function RewritePanel({ rw, issues, busy, onDecide }: { rw: RewriteView; issues:
     <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4" data-testid="rewrite-panel">
       <div className="flex items-center gap-2">
         <IconSparkles className="size-4 text-primary" />
-        <div className="font-semibold">Agent 改写方案</div>
+        <div className="font-semibold">{rw.rationale?.includes("快通道") ? "⚡ 快通道改写方案" : "Agent 改写方案"}</div>
         <span className="text-xs text-muted-foreground">针对 {rw.issueIds.length} 个风险项 · +{rw.stats.added} / −{rw.stats.removed} 字</span>
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" onClick={() => onDecide("discard")} disabled={busy}><IconX className="size-4" />放弃</Button>
