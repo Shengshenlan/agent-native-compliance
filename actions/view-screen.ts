@@ -12,7 +12,7 @@ export default defineAction({
   readOnly: true,
   run: async (_args, ctx) => {
     const navigation = await readAppState("navigation");
-    const selection = (await readAppStateForCurrentTab("selection").catch(() => null)) as { listingId?: string; issueIds?: string[] } | null;
+    const selection = (await readAppStateForCurrentTab("selection", { fallbackToGlobal: true }).catch(() => null)) as { listingId?: string; issueIds?: string[] } | null;
     const screen: Record<string, unknown> = {};
     if (navigation) screen.navigation = navigation;
     if (selection?.listingId) {
