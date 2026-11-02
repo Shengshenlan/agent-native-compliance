@@ -5,6 +5,7 @@
 - `src/lib/core/*.ts` — 品类/特征识别、品牌/仿牌词检测、规则匹配（`buildReport`）、风险等级与结论（`verdict.ts`）、引用校验等
 - `kb/rules.json` — 知识库 66 条规则（版本 2026.10.23-3，TH/PH/MY + 通用），每条附官方原文摘录与来源链接
 - `kb/README.md` — 知识库说明
+- `src/lib/text.ts` — `stripThai` 等文本小工具（`verdict.ts` 依赖，最后修改 2026-10-24T03:33Z）
 
 来源提交见 `SOURCE_COMMIT`，文件哈希见 `SHA256SUMS`（可用 `sha256sum -c SHA256SUMS` 验证未改动）。
 原项目的快照原文（`kb/snapshots/`）、Worker、前端、账号系统均**未**复制。
