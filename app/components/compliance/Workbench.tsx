@@ -179,7 +179,7 @@ function ListingPanel({ listingId }: { listingId: string }) {
     setMsg(`已把 ${pick.length} 个风险项交给 Agent 改写，生成后会在下方显示 diff`);
   };
   const exportMd = async () => {
-    const r = (await callAction("export-report", { listingId })) as { markdown: string };
+    const r = (await callAction("export-report", { listingId }, { method: "GET" })) as { markdown: string };
     const url = URL.createObjectURL(new Blob([r.markdown], { type: "text/markdown" }));
     const a = document.createElement("a"); a.href = url; a.download = `合规审查-${l.title.slice(0, 20)}.md`; a.click(); URL.revokeObjectURL(url);
   };
