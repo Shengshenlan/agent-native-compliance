@@ -32,8 +32,16 @@ export interface IssueDraft {
 
 export interface MarketSummary {
   market: Market;
-  verdict: string;
+  /** contest-layer verdict: legacy verdict refined with copy blockers */
+  verdict: "no" | "unknown" | "fix_and_certs" | "certs" | "fix" | "ok";
   label: string;
+  /** label/verdict exactly as the pre-existing summarize() returned them (kept for transparency) */
+  legacyVerdict: string;
+  legacyLabel: string;
+  /** copy problems that block listing until the text is changed (brand / counterfeit / medical claims) */
+  copyBlockers: string[];
+  /** ordered to-do list shown on the verdict card */
+  todo: string[];
   sentence: string;
   headline: string;
   risk: Report["risk"];
@@ -80,6 +88,45 @@ function ruleIssue(m: Market, h: RuleHit, kindOverride?: IssueKind): IssueDraft 
   };
 }
 
+export const VERDICT_LABEL_V2: Record<MarketSummary["verdict"], string> = {
+  no: "不能销售", unknown: "暂无法判断", fix_and_certs: "改文案 + 办证后可上架", certs: "办证后可上架", fix: "改文案后可上架", ok: "可以上架",
+};
+
+/**
+ * Contest-period fix: the legacy summarize() label only knows about certificates, so a listing that
+ * still carries a brand / counterfeit word could read 「办证后可上架」 or even 「可以上架」.
+ * Here the label, headline and to-do list are recomposed from the same Report so they always agree.
+ */
+export function composeVerdict(r: Report, legacy: { verdict: string; label: string; certs: { name: string }[] }, text: string) {
+  const zh = COUNTRY_ZH[r.input.country];
+  const where = (term: string) => (r.input.title.toLowerCase().includes(term.toLowerCase()) ? "标题" : text.toLowerCase().includes(term.toLowerCase()) ? "描述" : "文案");
+  const cf = r.brand.hits.filter((h) => h.type === "counterfeit");
+  const br = r.brand.hits.filter((h) => h.type === "brand");
+  const claims = r.review.filter((v) => v.text.startsWith("出现功效/成分敏感词")).map((v) => v.text.replace(/^出现功效\/成分敏感词：/, ""));
+  const copyBlockers = [
+    ...cf.map((h) => `删除${where(h.term)}中的仿冒暗示词「${h.term}」`),
+    ...br.map((h) => `删除${where(h.term)}中的品牌词「${h.term}」（或取得 ${h.brand} 授权）`),
+    ...claims.map((c) => `删除功效/成分宣称「${c}」`),
+  ];
+  const certs = legacy.certs.map((c) => c.name);
+  let verdict: MarketSummary["verdict"];
+  if (legacy.verdict === "no") verdict = "no";
+  else if (legacy.verdict === "unknown") verdict = "unknown";
+  else if (certs.length) verdict = copyBlockers.length ? "fix_and_certs" : "certs";
+  else verdict = copyBlockers.length ? "fix" : "ok";
+  const parts: string[] = [];
+  if (verdict === "no") parts.push(`此类商品在${zh}禁止销售或进口，改文案无法解决，请勿上架。`);
+  else if (verdict === "unknown") parts.push("没有识别出商品品类，请写明具体是什么商品后再查。");
+  else {
+    if (copyBlockers.length) parts.push(`先改 ${copyBlockers.length} 处文案问题（${copyBlockers.slice(0, 2).map((b) => b.replace(/^删除/, "")).join("；")}${copyBlockers.length > 2 ? " 等" : ""}）`);
+    if (certs.length) parts.push(`${copyBlockers.length ? "并" : ""}办齐 ${certs.length} 项必须的认证`);
+    parts.push(verdict === "ok" ? `未发现必须先办的证书或文案阻断问题，按要求准备标签后即可在${zh}上架。` : `，才能在${zh}上架。`);
+  }
+  const headline = parts.join("").replace(/^，/, "").replace(/），/, "），");
+  const todo = verdict === "no" ? ["不要上架该商品"] : [...copyBlockers, ...certs.map((c) => `办理：${c}`)];
+  return { verdict, label: VERDICT_LABEL_V2[verdict], headline, copyBlockers, todo };
+}
+
 /** Run the legacy matcher for each market and flatten everything into board items. */
 export function analyzeListing(input: AnalyzeInput, markets: readonly Market[]) {
   const issues: IssueDraft[] = [];
@@ -93,7 +140,8 @@ export function analyzeListing(input: AnalyzeInput, markets: readonly Market[]) 
     const r = buildReport({ title: input.title, description: input.description || "", category: input.category || "auto", country: market as Country, ...(input.platform ? { platform: input.platform } : {}) });
     category = category ?? r.category;
     const s = summarize(r);
-    summaries.push({ market, verdict: s.verdict, label: s.label, sentence: s.sentence, headline: r.conclusion.headline, risk: r.risk, mustCerts: s.certs.map((c) => c.name) });
+    const v = composeVerdict(r, s, text);
+    summaries.push({ market, verdict: v.verdict, label: v.label, legacyVerdict: s.verdict, legacyLabel: s.label, copyBlockers: v.copyBlockers, todo: v.todo, sentence: v.headline, headline: v.headline, risk: r.risk, mustCerts: s.certs.map((c) => c.name) });
 
     if (r.conclusion.verdict === "prohibited")
       push({ market, kind: "prohibited", severity: "high", title: `${COUNTRY_ZH[market]}禁售品类`, detail: r.conclusion.headline, evidence: null, suggestion: "不要在该市场上架；改写文案无法解决。", fixable: false, ruleId: null, sourceUrl: null, sourceTitle: null, quote: null, fingerprint: `${market}:prohibited` });

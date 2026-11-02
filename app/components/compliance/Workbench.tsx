@@ -212,7 +212,10 @@ function ListingPanel({ listingId }: { listingId: string }) {
             </div>
             <div className="mt-1 text-sm font-medium">{s.label}</div>
             <p className="mt-1 text-xs text-muted-foreground">{s.headline || s.sentence}</p>
-            {s.mustCerts.length > 0 && <ul className="mt-2 space-y-0.5 text-xs">{s.mustCerts.map((c) => <li key={c}>• {c}</li>)}</ul>}
+            <ul className="mt-2 space-y-0.5 text-xs">
+              {(s.copyBlockers ?? []).map((c) => <li key={c} className="text-red-600 dark:text-red-400">✎ {c}</li>)}
+              {s.mustCerts.map((c) => <li key={c}>• 办理：{c}</li>)}
+            </ul>
           </div>
         ))}
       </div>
