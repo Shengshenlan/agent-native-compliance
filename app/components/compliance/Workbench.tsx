@@ -1,7 +1,7 @@
 // Contest-period code: 出海合规工作台 main screen.
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import { actionErrorMessage, callAction, useActionMutation, useActionQuery, writeClientAppState } from "@agent-native/core/client/hooks";
-import { IconCheck, IconEye, IconEyeOff, IconFileExport, IconLoader2, IconPencil, IconPlus, IconRefresh, IconSparkles, IconX } from "@tabler/icons-react";
+import { IconTrash, IconCheck, IconEye, IconEyeOff, IconFileExport, IconLoader2, IconPencil, IconPlus, IconRefresh, IconSparkles, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -141,6 +141,8 @@ function ListingPanel({ listingId }: { listingId: string }) {
   const update = useActionMutation("update-issue");
   const recheck = useActionMutation("run-compliance-check");
   const decide = useActionMutation("apply-rewrite");
+  const del = useActionMutation("delete-listing");
+  const [, setParams] = useSearchParams();
 
   const issues = d?.issues ?? [];
   const visible = useMemo(() => issues.filter((i) => (statusFilter === "active" ? i.status === "open" || i.status === "approved" : statusFilter ? i.status === statusFilter : true) && (!marketFilter || i.market === marketFilter)), [issues, statusFilter, marketFilter]);
@@ -197,6 +199,7 @@ function ListingPanel({ listingId }: { listingId: string }) {
             {recheck.isPending ? <IconLoader2 className="size-4 animate-spin" /> : <IconRefresh className="size-4" />}重新检查
           </Button>
           <Button variant="outline" size="sm" onClick={exportMd}><IconFileExport className="size-4" />导出报告</Button>
+          <Button variant="ghost" size="icon-sm" title="删除商品" onClick={async () => { if (!window.confirm("删除该商品及其风险看板？")) return; await del.mutateAsync({ listingId }); setParams({}); }}><IconTrash className="size-4" /></Button>
         </div>
       </header>
 

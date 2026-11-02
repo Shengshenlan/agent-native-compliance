@@ -170,3 +170,12 @@ export async function listingDetail(ownerEmail: string, id: string) {
   const [iss, rws] = await Promise.all([listIssues(ownerEmail, id), listRewrites(ownerEmail, id)]);
   return { listing: listingView(l), issues: iss, pendingRewrite: rws.find((r) => r.status === "proposed") ?? null, history: rws.filter((r) => r.status !== "proposed").slice(0, 5).map(({ titleDiff, descriptionDiff, ...x }) => x) };
 }
+
+export async function deleteListing(ownerEmail: string, id: string) {
+  const l = await requireListing(ownerEmail, id);
+  const db = getDb();
+  await db.delete(rewrites).where(and(eq(rewrites.listingId, l.id), eq(rewrites.ownerEmail, ownerEmail)));
+  await db.delete(issues).where(and(eq(issues.listingId, l.id), eq(issues.ownerEmail, ownerEmail)));
+  await db.delete(listings).where(and(eq(listings.id, l.id), eq(listings.ownerEmail, ownerEmail)));
+  return { deleted: l.id, title: l.title };
+}
