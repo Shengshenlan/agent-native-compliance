@@ -90,7 +90,7 @@ export function analyzeListing(input: AnalyzeInput, markets: readonly Market[]) 
   let category: Category | null = null;
 
   for (const market of markets) {
-    const r = buildReport({ title: input.title, description: input.description, category: input.category || "auto", country: market as Country, ...(input.platform ? { platform: input.platform } : {}) });
+    const r = buildReport({ title: input.title, description: input.description || "", category: input.category || "auto", country: market as Country, ...(input.platform ? { platform: input.platform } : {}) });
     category = category ?? r.category;
     const s = summarize(r);
     summaries.push({ market, verdict: s.verdict, label: s.label, sentence: s.sentence, headline: r.conclusion.headline, risk: r.risk, mustCerts: s.certs.map((c) => c.name) });
