@@ -16,9 +16,12 @@
       "@shared/*": [
         "./shared/*"
       ]
-    }
+    },
+    "resolveJsonModule": true
   },
   "include": [
+    "legacy/**/*",
+    "actions/**/*",
     "app/**/*",
     "server/**/*",
     "shared/**/*",
